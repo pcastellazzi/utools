@@ -1,0 +1,12 @@
+/.coverage
+/.venv
+/.vscode
+/.tox
+/build
+/dist
+/.*_cache
+
+.DS_Store
+*.py[cod]
+__pycache__
+

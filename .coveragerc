@@ -1,0 +1,9 @@
+[run]
+branch = True
+
+[report]
+exclude_lines =
+  pragma: no branch
+  pragma: no cover
+  continue
+  pass
