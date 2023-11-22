@@ -19,9 +19,9 @@ def test_eof():
     assert_success(p.eof()(0, ""), 0, None)
 
 
-def test_const():
-    assert_failure(p.const("A")(0, "1234"), 0, "A")
-    assert_success(p.const("A")(0, "AAAA"), 1, "A")
+def test_literal():
+    assert_failure(p.literal("A")(0, "1234"), 0, "A")
+    assert_success(p.literal("A")(0, "AAAA"), 1, "A")
 
 
 def test_pattern():
@@ -30,13 +30,13 @@ def test_pattern():
     assert_success(digits(0, "1234"), 4, "1234")
 
 
-def test_choice():
-    parser = p.choice(of=[p.const("A"), p.const("B")])
+def test_one():
+    parser = p.one(of=[p.literal("A"), p.literal("B")])
     assert_failure(parser(0, "CCCC"), 0, ["A", "B"])
     assert_success(parser(0, "BBBB"), 1, "B")
     assert_success(parser(0, "AAAA"), 1, "A")
 
-    parser = p.choice(of=[parser, p.const("C")])
+    parser = p.one(of=[parser, p.literal("C")])
     assert_failure(parser(0, "DDDD"), 0, ["A", "B", "C"])
     assert_success(parser(0, "CCCC"), 1, "C")
     assert_success(parser(0, "BBBB"), 1, "B")
@@ -44,7 +44,7 @@ def test_choice():
 
 
 def test_sequence():
-    parser = p.sequence(of=[p.const("A"), p.const("B")])
+    parser = p.sequence(of=[p.literal("A"), p.literal("B")])
     assert_failure(parser(0, "CCCC"), 0, "A")
     assert_failure(parser(0, "ACCC"), 1, "B")
     assert_success(parser(0, "ABCD"), 2, ["A", "B"])
@@ -73,17 +73,17 @@ def test_chain():
 
 
 def test_repeat():
-    parser = p.many0(p.const("A"))
+    parser = p.many0(p.literal("A"))
     assert_success(parser(0, ""), 0, [])
     assert_success(parser(0, "A"), 1, ["A"])
     assert_success(parser(0, "AAAB"), 3, ["A", "A", "A"])
 
-    parser = p.many1(p.const("A"))
+    parser = p.many1(p.literal("A"))
     assert_failure(parser(0, ""), 0, "A")
     assert_success(parser(0, "A"), 1, ["A"])
     assert_success(parser(0, "AAAB"), 3, ["A", "A", "A"])
 
-    parser = p.repeat(p.const("A"), 2, 3)
+    parser = p.repeat(p.literal("A"), 2, 3)
     assert_failure(parser(0, "BBBB"), 0, "A")
     assert_failure(parser(0, "ABBB"), 1, "A")
     assert_success(parser(0, "AABB"), 2, ["A", "A"])
@@ -111,9 +111,9 @@ def test_forward_declaration():
 
     nested_decl = p.sequence(
         of=[
-            p.const("("),
-            p.choice(of=[p.pattern(r"\d+"), nested]),
-            p.const(")"),
+            p.literal("("),
+            p.one(of=[p.pattern(r"\d+"), nested]),
+            p.literal(")"),
         ]
     )
     nested.set(nested_decl)

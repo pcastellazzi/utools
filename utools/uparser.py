@@ -105,7 +105,7 @@ def success(value: Any) -> Parser:
     return lambda index, _: Success(index, value)
 
 
-def const(expected: str) -> Parser:
+def literal(expected: str) -> Parser:
     def parser(index: int, actual: str) -> State:
         if actual.startswith(expected, index):
             return Success(index + len(expected), expected)
@@ -126,7 +126,7 @@ def pattern(expected: str) -> Parser:
     return parser
 
 
-def choice(*, of: list[Parser]) -> Parser:
+def one(*, of: list[Parser]) -> Parser:
     def parser(index: int, actual: str) -> State:
         failures: list[str] = []
 
@@ -163,7 +163,7 @@ def sequence(*, of: list[Parser]) -> Parser:
     return parser
 
 
-def contextual(generator: Callable[[], Generator[Parser, Any, Any]]) -> Parser:
+def contextual(generator: Callable[[], Generator[Parser, Any, Parser]]) -> Parser:
     def parser(index: int, actual: str) -> State:
         iterator = generator()
         value = None
