@@ -2,90 +2,33 @@ import re
 import sys
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
-from typing import Any, TypeAlias
+from typing import Any
 
 INFINITY = sys.maxsize
 
 
-@dataclass(slots=True)
+@dataclass(eq=False, frozen=True, slots=True)
 class Failure:
     index: int
     error: Any
 
 
-@dataclass(slots=True)
+@dataclass(eq=False, frozen=True, slots=True)
 class Success:
     index: int
     value: Any
 
 
-State: TypeAlias = Failure | Success
-Parser: TypeAlias = Callable[[int, str], State]
+State = Failure | Success
+Parser = Callable[[int, str], State]
 
 
-def chain(a: Parser, fn: Callable[[Any], Parser]) -> Parser:
-    def parser(index: int, actual: str) -> State:
-        match a(index, actual):
-            case Failure() as failure:
-                return failure
-            case Success(index, value):
-                return fn(value)(index, actual)
-
-    return parser
+def failure(error: Any) -> Parser:
+    return lambda index, _: Failure(index, error)
 
 
-def err(a: Parser, fn: Callable[[Any], Any]) -> Parser:
-    def parser(index: int, actual: str) -> State:
-        match a(index, actual):
-            case Failure(index, error):
-                return Failure(index, fn(error))
-            case Success() as success:
-                return success
-
-    return parser
-
-
-def map(a: Parser, fn: Callable[[Any], Any]) -> Parser:  # noqa: A001
-    def parser(index: int, actual: str) -> State:
-        match a(index, actual):
-            case Failure() as failure:
-                return failure
-            case Success(index, value):
-                return Success(index, fn(value))
-
-    return parser
-
-
-def repeat(a: Parser, minimum: int, maximum: int | None) -> Parser:
-    maximum = maximum or minimum
-
-    def parser(index: int, actual: str) -> State:
-        current_index = index
-        iterations = 0
-        values: list[Any] = []
-
-        while iterations < maximum:
-            match a(current_index, actual):
-                case Success(index, value):
-                    current_index = index
-                    iterations += 1
-                    values.append(value)
-                case Failure() as failure:
-                    if iterations >= minimum:
-                        break
-                    return failure
-
-        return Success(index, values)
-
-    return parser
-
-
-def many0(a: Parser) -> "Parser":
-    return repeat(a, 0, INFINITY)
-
-
-def many1(a: Parser) -> "Parser":
-    return repeat(a, 1, INFINITY)
+def success(value: Any) -> Parser:
+    return lambda index, _: Success(index, value)
 
 
 def eof() -> Parser:
@@ -95,14 +38,6 @@ def eof() -> Parser:
         return Failure(index, "EOF")
 
     return parser
-
-
-def failure(error: Any) -> Parser:
-    return lambda index, _: Failure(index, error)
-
-
-def success(value: Any) -> Parser:
-    return lambda index, _: Success(index, value)
 
 
 def literal(expected: str) -> Parser:
@@ -122,6 +57,28 @@ def pattern(expected: str) -> Parser:
         if match:
             return Success(match.end(), match.group())
         return Failure(index, expected)
+
+    return parser
+
+
+def peek(a: Parser) -> Parser:
+    def parser(index: int, actual: str) -> State:
+        match a(index, actual):
+            case Success(_, value):
+                return Success(index, value)
+            case Failure() as failure:
+                return failure
+
+    return parser
+
+
+def chain(a: Parser, fn: Callable[[Any], Parser]) -> Parser:
+    def parser(index: int, actual: str) -> State:
+        match a(index, actual):
+            case Failure() as failure:
+                return failure
+            case Success(index, value):
+                return fn(value)(index, actual)
 
     return parser
 
@@ -163,6 +120,52 @@ def sequence(*, of: list[Parser]) -> Parser:
     return parser
 
 
+def repeat(a: Parser, minimum: int, maximum: int | None) -> Parser:
+    maximum = maximum or minimum
+
+    def parser(index: int, actual: str) -> State:
+        current_index = index
+        iterations = 0
+        values: list[Any] = []
+
+        while iterations < maximum:
+            match a(current_index, actual):
+                case Success(index, value):
+                    current_index = index
+                    iterations += 1
+                    values.append(value)
+                case Failure() as failure:
+                    if iterations >= minimum:
+                        break
+                    return failure
+
+        return Success(index, values)
+
+    return parser
+
+
+def err(a: Parser, fn: Callable[[Any], Any]) -> Parser:
+    def parser(index: int, actual: str) -> State:
+        match a(index, actual):
+            case Failure(index, error):
+                return Failure(index, fn(error))
+            case Success() as success:
+                return success
+
+    return parser
+
+
+def map(a: Parser, fn: Callable[[Any], Any]) -> Parser:  # noqa: A001
+    def parser(index: int, actual: str) -> State:
+        match a(index, actual):
+            case Failure() as failure:
+                return failure
+            case Success(index, value):
+                return Success(index, fn(value))
+
+    return parser
+
+
 def contextual(generator: Callable[[], Generator[Parser, Any, Parser]]) -> Parser:
     def parser(index: int, actual: str) -> State:
         iterator = generator()
@@ -191,3 +194,15 @@ class ForwardDeclaration:
 
     def set(self, parser: Parser) -> None:  # noqa: A003
         self.parser = parser
+
+
+def assert_failure(state: State, index: int, error: Any):
+    assert isinstance(state, Failure)
+    assert state.index == index
+    assert state.error == error
+
+
+def assert_success(state: State, index: int, value: Any):
+    assert isinstance(state, Success)
+    assert state.index == index
+    assert state.value == value
