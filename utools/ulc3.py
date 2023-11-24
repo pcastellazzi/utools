@@ -1,25 +1,22 @@
 from array import array
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 from enum import IntEnum, IntFlag, auto
 from io import BytesIO
-from termios import TCSAFLUSH, tcgetattr, tcsetattr
-from tty import setcbreak
-from typing import TextIO
+from types import TracebackType
+from typing import Protocol, TextIO
 
 
-def getch(stdin: TextIO) -> str:
-    # https://stackoverflow.com/a/72825322
-    if not stdin.isatty():
-        return stdin.read(1)
+class MemoryMappedDevice(Protocol):
+    def __enter__(self) -> None:
+        ...
 
-    fd = stdin.fileno()
-    old = tcgetattr(fd)
-
-    try:
-        setcbreak(fd)
-        return stdin.read(1)
-    finally:
-        tcsetattr(fd, TCSAFLUSH, old)
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        ...
 
 
 def sign_extend(value: int, bits: int) -> int:
@@ -29,7 +26,6 @@ def sign_extend(value: int, bits: int) -> int:
 
 
 def zero_fill(size: int):
-    assert size > 0, "at least 1 item must be generated"
     return (0 for _ in range(size))
 
 
@@ -65,41 +61,27 @@ class TrapVector(IntEnum):
     IN = 0x23
     PUTSP = 0x24
     HALT = 0x25
-    DEBUG = 0x99
 
 
 class Memory:
     SIZE = 1 << 16
-    __slots__ = ("memory",)
+    __slots__ = ("memory", "mmio")
 
     def __init__(self):
+        self.mmio: dict[int, MemoryMappedDevice] = {}
         self.memory = array("H", zero_fill(self.SIZE))
 
     def __getitem__(self, position: int) -> int:
+        if position in self.mmio:
+            with self.mmio[position]:
+                return self.memory[position]
         return self.memory[position]
 
     def __setitem__(self, position: int, value: int):
         self.memory[position] = value
 
-    def debug(self, address: int, output: TextIO) -> None:
-        assert 0 <= address < Memory.SIZE
-        width = 16
-        padding = width * 3 - 1
-        dump = self.memory[address : address + 128].tobytes()
-
-        def blocks() -> Iterator[bytes]:
-            quotient, remainder = divmod(len(dump), width)
-            for index in range(quotient):
-                yield dump[index * width : (index + 1) * width]
-            if remainder:
-                yield dump[quotient * width :]
-
-        for offset, block in enumerate(blocks()):
-            text = "".join(chr(b) if 0x20 <= b <= 0x7B else "." for b in block)
-            print(
-                f"{address + (offset* width):08x}  {block.hex(' '):{padding}}  {text}",
-                file=output,
-            )
+    def add_device(self, address: int, device: MemoryMappedDevice):
+        self.mmio[address] = device
 
     def frombytes(self, start_address: int, data: bytes):
         memory = array("H")
@@ -118,39 +100,17 @@ class Memory:
 
 
 class Registers:
-    GREGISTERS = 8
     NREGISTERS = 10
-
     __slots__ = ("registers",)
 
     def __init__(self):
         self.registers = array("H", zero_fill(self.NREGISTERS))
 
     def __getitem__(self, register: int) -> int:
-        assert 0 <= register < self.GREGISTERS, "only GPRs are indexable"
         return self.registers[register]
 
     def __setitem__(self, register: int, value: int):
-        assert 0 <= register < self.GREGISTERS, "only GPRs are indexable"
-        assert 0 <= value < (1 << 16), "value must be UINT16"
-        self.registers[register] = value
-        self.update_flags(register)
-
-    def __str__(self):
-        return ",  ".join(
-            [
-                f"pc: {self.pc:04x}",
-                f"cond: {self.cond:04x}",
-                f"r0: {self[0]:04x}",
-                f"r4: {self[4]:04x}",
-                f"r1: {self[1]:04x}",
-                f"r5: {self[5]:04x}",
-                f"r2: {self[2]:04x}",
-                f"r5: {self[6]:04x}",
-                f"r3: {self[3]:04x}",
-                f"r5: {self[7]:04x}",
-            ]
-        )
+        self.registers[register] = value & 0xFFFF
 
     @property
     def cond(self):
@@ -169,7 +129,6 @@ class Registers:
         self.registers[-1] = value
 
     def update_flags(self, register: int):
-        assert 0 <= register <= self.GREGISTERS, "only GPRs can update flags"
         value = self.registers[register]
         if value == 0:
             self.cond = Flag.ZERO
@@ -183,16 +142,11 @@ PROGRAM_START = 0x3000
 
 
 def lc3_trap(
-    vector: int,
-    registers: Registers,
-    memory: Memory,
-    stdin: TextIO,
-    stdout: TextIO,
-    stderr: TextIO,
-):
+    vector: int, registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO
+) -> bool:
     match TrapVector(vector):
         case TrapVector.GETC:
-            registers[0] = ord(getch(stdin)) & 0xFF
+            registers[0] = ord(stdin.read(1)) & 0xFF
 
         case TrapVector.OUT:
             sys.stdout.write(chr(registers[0] & 0xFF))
@@ -208,9 +162,10 @@ def lc3_trap(
 
         case TrapVector.IN:
             stdout.write("Waiting for input: ")
-            c = getch(stdin)
+            c = stdin.read(1)
             stdout.write(c)
-            registers[0] = ord(getch(stdin)) & 0xFF
+            stdout.flush()
+            registers[0] = ord(c) & 0xFF
 
         case TrapVector.PUTSP:
             start = registers[0]
@@ -222,18 +177,12 @@ def lc3_trap(
             stdout.flush()
 
         case TrapVector.HALT:
-            sys.exit()
+            return True
 
-        case TrapVector.DEBUG:
-            print(registers, file=stderr)
-            memory.debug(registers.pc, stderr)
-            sys.exit()
+    return False
 
 
-def lc3(
-    registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO, stderr: TextIO
-):
-    registers.cond = Flag.ZERO
+def lc3(registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO):  # noqa: PLR0915
     registers.pc = PROGRAM_START
 
     while True:
@@ -256,6 +205,7 @@ def lc3(
                 else:
                     sr2 = instruction & 0x7
                     registers[dr] = registers[sr1] + registers[sr2]
+                registers.update_flags(dr)
 
             case OpCode.AND:
                 dr = (instruction >> 9) & 0x7
@@ -266,6 +216,7 @@ def lc3(
                 else:
                     sr2 = instruction & 0x7
                     registers[dr] = registers[sr1] & registers[sr2]
+                registers.update_flags(dr)
 
             case OpCode.JMP:
                 br = (instruction >> 6) & 0x7
@@ -284,28 +235,39 @@ def lc3(
                 dr = (instruction >> 9) & 0x7
                 pc_offset_9 = sign_extend(instruction & 0x1FF, 9)
                 registers[dr] = memory[registers.pc + pc_offset_9]
+                registers.update_flags(dr)
 
             case OpCode.LDI:
                 dr = (instruction >> 9) & 0x7
                 pc_offset_9 = sign_extend(instruction & 0x1FF, 9)
                 address = memory[registers.pc + pc_offset_9]
                 registers[dr] = memory[address]
+                registers.update_flags(dr)
 
             case OpCode.LDR:
                 dr = (instruction >> 9) & 0x7
                 br = (instruction >> 6) & 0x7
                 offset_6 = sign_extend(instruction & 0x3F, 6)
                 registers[dr] = memory[registers[br] + offset_6]
+                registers.update_flags(dr)
 
             case OpCode.LEA:
                 dr = (instruction >> 9) & 0x7
                 pc_offset_9 = sign_extend(instruction & 0x1FF, 9)
                 registers[dr] = registers.pc + pc_offset_9
+                registers.update_flags(dr)
 
             case OpCode.NOT:
                 dr = (instruction >> 9) & 0x7
                 sr = (instruction >> 6) & 0x7
                 registers[dr] = ~registers[sr]
+                registers.update_flags(dr)
+
+            case OpCode.RES:  # intentionally blank
+                pass
+
+            case OpCode.RTI:  # not implemented
+                pass
 
             case OpCode.ST:
                 sr = (instruction >> 9) & 0x7
@@ -327,27 +289,64 @@ def lc3(
             case OpCode.TRAP:
                 registers[7] = registers.pc
                 vector = instruction & 0xFF
-                lc3_trap(vector, registers, memory, stdin, stdout, stderr)
-
-            case _ as opcode:
-                err = f"0b{opcode:04b}({opcode:d}) is not supported"
-                raise RuntimeError(err)
+                if lc3_trap(vector, registers, memory, stdin, stdout):
+                    break
 
 
 if __name__ == "__main__":
     import argparse
     import contextlib
+    import select
     import sys
+    import termios
+    import tty
 
     parser = argparse.ArgumentParser(description="LC3 emulator")
     parser.add_argument("image", type=argparse.FileType("rb"))
     args = parser.parse_args()
 
+    @contextlib.contextmanager
+    def cbreak_terminal(stdin: TextIO):
+        if stdin.isatty():
+            settings = termios.tcgetattr(stdin)
+            try:
+                tty.setcbreak(stdin)
+                yield stdin
+            finally:
+                termios.tcsetattr(stdin, termios.TCSADRAIN, settings)
+        else:
+            yield stdin
+
+    class Keyboard:
+        KBSR = 0xFE00
+        KBDR = 0xFE02
+
+        def __init__(self, memory: Memory, stdin: TextIO):
+            self.memory = memory
+            self.stdin = stdin
+
+        def __enter__(self):
+            # only works when the terminal is in raw or cbreak mode
+            waiting, _, _ = select.select([sys.stdin], [], [], 0)
+            if len(waiting) > 0:
+                self.memory[self.KBSR] = 1 << 15
+                self.memory[self.KBDR] = ord(self.stdin.read(1))
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_value: BaseException | None,
+            traceback: TracebackType | None,
+        ) -> None:
+            self.memory[self.KBSR] = 0
+
     registers = Registers()
     memory = Memory()
 
-    with contextlib.suppress(KeyboardInterrupt):
+    with (
+        contextlib.suppress(KeyboardInterrupt),
+        cbreak_terminal(sys.stdin) as stdin,
+    ):
+        memory.add_device(Keyboard.KBSR, Keyboard(memory, stdin))
         memory.fromfile(args.image)
-        memory.debug(0x3000, sys.stdout)
-        sys.exit()
-        lc3(registers, memory, sys.stdin, sys.stdout, sys.stderr)
+        lc3(registers, memory, stdin, sys.stdout)
