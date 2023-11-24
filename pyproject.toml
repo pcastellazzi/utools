@@ -51,3 +51,4 @@ ignore = [
     "ISC001", # conflics with the formatter
     "S101",   # use of assert
 ]
+
