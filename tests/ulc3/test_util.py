@@ -1,12 +1,8 @@
 from array import array
-from io import BytesIO, StringIO
+from io import BytesIO
+from types import TracebackType
 
-from utools.ulc3 import Flag, Memory, Registers, getch, sign_extend, zero_fill
-
-
-def test_getch():
-    assert getch(StringIO("Q")) == "Q"
-    assert getch(StringIO("q")) == "q"
+from utools.ulc3 import Flag, Memory, Registers, sign_extend, zero_fill
 
 
 def test_sign_extend():
@@ -44,6 +40,31 @@ def test_memory():
         assert mem[0x3000 + i] == e
 
 
+def test_memory_device():
+    class FakeDevice:
+        def __init__(self, memory: Memory):
+            self.memory = memory
+
+        def __enter__(self) -> None:
+            self.memory[0] = 1
+            self.memory[1] = 1
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_value: BaseException | None,
+            traceback: TracebackType | None,
+        ) -> None:
+            self.memory[2] = 1
+
+    mem = Memory()
+    mem.add_device(0x0000, FakeDevice(mem))
+
+    assert mem[0] == 1
+    assert mem[1] == 1
+    assert mem[2] == 1
+
+
 def test_registers():
     reg = Registers()
     assert reg[0] == 0
@@ -52,10 +73,13 @@ def test_registers():
     assert reg.cond == 0
 
     reg[0] = 0x1111
+    reg.update_flags(0)
     assert reg.cond & Flag.POSITIVE
 
     reg[0] = 0
+    reg.update_flags(0)
     assert reg.cond & Flag.ZERO
 
     reg[0] = 0xFFFF
+    reg.update_flags(0)
     assert reg.cond & Flag.NEGATIVE
