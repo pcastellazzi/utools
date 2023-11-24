@@ -32,9 +32,6 @@ pytest-cov = "*"
 ruff = "*"
 safety = "*"
 
-[tool.pyright]
-reportUnknownLambdaType = false
-
 [tool.ruff]
 builtins = ["_"]
 target-version = "py310"
