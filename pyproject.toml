@@ -32,9 +32,6 @@ pytest-cov = "*"
 ruff = "*"
 safety = "*"
 
-[tool.pyright]
-reportUnknownLambdaType = false
-
 [tool.ruff]
 builtins = ["_"]
 target-version = "py310"
@@ -54,3 +51,4 @@ ignore = [
     "ISC001", # conflics with the formatter
     "S101",   # use of assert
 ]
+
