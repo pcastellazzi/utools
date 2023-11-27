@@ -87,8 +87,8 @@ def one(*, of: list[Parser]) -> Parser:
     def parser(index: int, actual: str) -> State:
         failures: list[str] = []
 
-        for parser in of:
-            match parser(index, actual):
+        for a in of:
+            match a(index, actual):
                 case Success() as success:
                     return success
                 case Failure(_, error):
@@ -98,24 +98,6 @@ def one(*, of: list[Parser]) -> Parser:
                         failures.extend(error)
 
         return Failure(index, failures)
-
-    return parser
-
-
-def sequence(*, of: list[Parser]) -> Parser:
-    def parser(index: int, actual: str) -> State:
-        last_known_position = index
-        values: list[Any] = []
-
-        for parser in of:
-            match parser(last_known_position, actual):
-                case Success(index, value):
-                    last_known_position = index
-                    values.append(value)
-                case Failure() as failure:
-                    return failure
-
-        return Success(last_known_position, values)
 
     return parser
 
@@ -140,6 +122,62 @@ def repeat(a: Parser, minimum: int, maximum: int | None) -> Parser:
                     return failure
 
         return Success(index, values)
+
+    return parser
+
+
+def many0(a: Parser) -> Parser:
+    return repeat(a, 0, INFINITY)
+
+
+def many1(a: Parser) -> Parser:
+    return repeat(a, 1, INFINITY)
+
+
+def separated(*, by: Parser, sequence: list[Parser]) -> Parser:
+    def parser(index: int, actual: str) -> State:
+        last_known_position = index
+        values: list[Any] = []
+
+        match by(last_known_position, actual):
+            case Success(index, _):
+                last_known_position = index
+            case Failure():
+                pass
+
+        for a in sequence:
+            match a(last_known_position, actual):
+                case Success(index, value):
+                    last_known_position = index
+                    values.append(value)
+                case Failure() as failure:
+                    return failure
+
+            match by(last_known_position, actual):
+                case Success(index, _):
+                    last_known_position = index
+                case Failure():
+                    pass
+
+        return Success(last_known_position, values)
+
+    return parser
+
+
+def sequence(*, of: list[Parser]) -> Parser:
+    def parser(index: int, actual: str) -> State:
+        last_known_position = index
+        values: list[Any] = []
+
+        for a in of:
+            match a(last_known_position, actual):
+                case Success(index, value):
+                    last_known_position = index
+                    values.append(value)
+                case Failure() as failure:
+                    return failure
+
+        return Success(last_known_position, values)
 
     return parser
 

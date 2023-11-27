@@ -58,20 +58,13 @@ def test_one():
     assert_success(parser(0, "AAAA"), 1, "A")
 
 
-def test_sequence():
-    parser = p.sequence(of=[p.literal("A"), p.literal("B")])
-    assert_failure(parser(0, "CCCC"), 0, "A")
-    assert_failure(parser(0, "ACCC"), 1, "B")
-    assert_success(parser(0, "ABCD"), 2, ["A", "B"])
-
-
 def test_repeat():
-    parser = p.repeat(p.literal("A"), 0, p.INFINITY)
+    parser = p.many0(p.literal("A"))
     assert_success(parser(0, ""), 0, [])
     assert_success(parser(0, "A"), 1, ["A"])
     assert_success(parser(0, "AAAB"), 3, ["A", "A", "A"])
 
-    parser = p.repeat(p.literal("A"), 1, p.INFINITY)
+    parser = p.many1(p.literal("A"))
     assert_failure(parser(0, ""), 0, "A")
     assert_success(parser(0, "A"), 1, ["A"])
     assert_success(parser(0, "AAAB"), 3, ["A", "A", "A"])
@@ -82,6 +75,21 @@ def test_repeat():
     assert_success(parser(0, "AABB"), 2, ["A", "A"])
     assert_success(parser(0, "AAAB"), 3, ["A", "A", "A"])
     assert_success(parser(0, "AAAA"), 3, ["A", "A", "A"])
+
+
+def test_sequence():
+    parser = p.sequence(of=[p.literal("A"), p.literal("B")])
+    assert_failure(parser(0, "CCCC"), 0, "A")
+    assert_failure(parser(0, "ACCC"), 1, "B")
+    assert_success(parser(0, "ABCD"), 2, ["A", "B"])
+
+
+def test_separated():
+    spaces = p.pattern(r"\s*")
+    parser = p.separated(by=spaces, sequence=[p.literal("A"), p.literal("B")])
+    assert_failure(parser(0, " C C C C "), 1, "A")
+    assert_failure(parser(0, "A C C C "), 2, "B")
+    assert_success(parser(0, " A B C D"), 5, ["A", "B"])
 
 
 def test_maps():

@@ -23,21 +23,14 @@ operator = p.one(
 )
 
 expression = p.ForwardDeclaration()
-expression_decl = p.sequence(
-    of=[
+expression_decl = p.separated(
+    by=whitespace,
+    sequence=[
         operator,
-        whitespace,
         p.one(of=[number, expression]),
-        whitespace,
         p.one(of=[number, expression]),
     ],
 )
-
-expression_decl = p.map(
-    expression_decl,
-    lambda seq: list(filter(lambda ele: ele != "whitespace", seq)),
-)
-
 expression.set(expression_decl)
 
 expr_t = list["str | int | expr_t"]
