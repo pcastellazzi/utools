@@ -1,3 +1,5 @@
+# cspell:words newhlen oldhlen
+
 import contextlib
 import logging
 import os

@@ -1,3 +1,6 @@
+# cSpell:ignoreRegExp A+B+
+# cSpell:ignoreRegExp A+C+
+
 from collections.abc import Generator
 from typing import Any
 

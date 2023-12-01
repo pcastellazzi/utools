@@ -30,7 +30,7 @@ def _check_state(state: State, text: str, index: int) -> tuple[bool, int]:
         case "element":
             return (True, 1) if state.value == text[index] else (False, 0)
         case "group":  # pragma: no branch
-            return match(state.value, text[index:])  # type: ignore
+            return match(state.value, text[index:])  # type: ignore noqa: PGH003
 
 
 def compile(expr: str) -> list[State]:  # noqa: A001

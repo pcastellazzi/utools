@@ -1,3 +1,5 @@
+# cspell:words mmio
+
 from array import array
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag, auto
@@ -55,11 +57,11 @@ class OpCode(IntEnum):
 
 
 class TrapVector(IntEnum):
-    GETC = 0x20
-    OUT = 0x21
-    PUTS = 0x22
-    IN = 0x23
-    PUTSP = 0x24
+    GET_CHARACTER = 0x20
+    PUT_CHARACTER = 0x21
+    PUT_STRING = 0x22
+    GET_STRING = 0x23
+    PUT_PACKED_STRING = 0x24
     HALT = 0x25
 
 
@@ -100,11 +102,12 @@ class Memory:
 
 
 class Registers:
-    NREGISTERS = 10
+    REGISTERS = 10
+
     __slots__ = ("registers",)
 
     def __init__(self):
-        self.registers = array("H", zero_fill(self.NREGISTERS))
+        self.registers = array("H", zero_fill(self.REGISTERS))
 
     def __getitem__(self, register: int) -> int:
         return self.registers[register]
@@ -145,14 +148,14 @@ def lc3_trap(
     vector: int, registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO
 ) -> bool:
     match TrapVector(vector):
-        case TrapVector.GETC:
+        case TrapVector.GET_CHARACTER:
             registers[0] = ord(stdin.read(1)) & 0xFF
 
-        case TrapVector.OUT:
+        case TrapVector.PUT_CHARACTER:
             sys.stdout.write(chr(registers[0] & 0xFF))
             sys.stdout.flush()
 
-        case TrapVector.PUTS:
+        case TrapVector.PUT_STRING:
             start = registers[0]
             index = 0
             while (c := memory[start + index]) != 0x00:
@@ -160,14 +163,14 @@ def lc3_trap(
                 index += 1
             stdout.flush()
 
-        case TrapVector.IN:
+        case TrapVector.GET_STRING:
             stdout.write("Waiting for input: ")
             c = stdin.read(1)
             stdout.write(c)
             stdout.flush()
             registers[0] = ord(c) & 0xFF
 
-        case TrapVector.PUTSP:
+        case TrapVector.PUT_PACKED_STRING:
             start = registers[0]
             index = 0
             while (c := memory[start + index]) != 0x00:
@@ -318,8 +321,8 @@ if __name__ == "__main__":
             yield stdin
 
     class Keyboard:
-        KBSR = 0xFE00
-        KBDR = 0xFE02
+        SIGNAL = 0xFE00
+        DATA = 0xFE02
 
         def __init__(self, memory: Memory, stdin: TextIO):
             self.memory = memory
@@ -329,8 +332,8 @@ if __name__ == "__main__":
             # only works when the terminal is in raw or cbreak mode
             waiting, _, _ = select.select([sys.stdin], [], [], 0)
             if len(waiting) > 0:
-                self.memory[self.KBSR] = 1 << 15
-                self.memory[self.KBDR] = ord(self.stdin.read(1))
+                self.memory[self.SIGNAL] = 1 << 15
+                self.memory[self.DATA] = ord(self.stdin.read(1))
 
         def __exit__(
             self,
@@ -338,7 +341,7 @@ if __name__ == "__main__":
             exc_value: BaseException | None,
             traceback: TracebackType | None,
         ) -> None:
-            self.memory[self.KBSR] = 0
+            self.memory[self.SIGNAL] = 0
 
     registers = Registers()
     memory = Memory()
@@ -347,6 +350,6 @@ if __name__ == "__main__":
         contextlib.suppress(KeyboardInterrupt),
         cbreak_terminal(sys.stdin) as stdin,
     ):
-        memory.add_device(Keyboard.KBSR, Keyboard(memory, stdin))
+        memory.add_device(Keyboard.SIGNAL, Keyboard(memory, stdin))
         memory.fromfile(args.image)
         lc3(registers, memory, stdin, sys.stdout)
