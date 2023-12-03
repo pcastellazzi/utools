@@ -139,25 +139,18 @@ def separated(*, by: Parser, sequence: list[Parser]) -> Parser:
         last_known_position = index
         values: list[Any] = []
 
-        match by(last_known_position, actual):
-            case Success(index, _):
-                last_known_position = index
-            case Failure():
-                pass
+        # simulating "".join behavior
+        parsers = [by] * ((len(sequence) * 2) - 1)
+        parsers[0::2] = sequence
 
-        for a in sequence:
+        for a in parsers:
             match a(last_known_position, actual):
                 case Success(index, value):
                     last_known_position = index
-                    values.append(value)
+                    if a != by:
+                        values.append(value)
                 case Failure() as failure:
                     return failure
-
-            match by(last_known_position, actual):
-                case Success(index, _):
-                    last_known_position = index
-                case Failure():
-                    pass
 
         return Success(last_known_position, values)
 

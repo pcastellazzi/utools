@@ -90,9 +90,9 @@ def test_sequence():
 def test_separated():
     spaces = p.pattern(r"\s+")
     parser = p.separated(by=spaces, sequence=[p.literal("A"), p.literal("B")])
-    assert_failure(parser(0, " C C C C "), 1, "A")
+    assert_failure(parser(0, " C C C C "), 0, "A")
     assert_failure(parser(0, "A C C C "), 2, "B")
-    assert_success(parser(0, " A B C D"), 5, ["A", "B"])
+    assert_success(parser(0, "A B C D"), 3, ["A", "B"])
     assert_success(parser(0, "A B"), 3, ["A", "B"])
 
 
