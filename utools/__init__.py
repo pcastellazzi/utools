@@ -6,19 +6,20 @@ import os
 import pathlib
 import readline
 import time
-import typing
+from collections.abc import Generator
+from typing import Any
 
 __all__ = ["DEBUG", "configure_logging", "history"]
 
 DEBUG = "DEBUG" in os.environ
 
 
-def configure_logging():
+def configure_logging() -> None:
     old_record_factory = logging.getLogRecordFactory()
     epoch = time.monotonic()
 
     def new_record_factory(
-        *args: tuple[typing.Any], **kwargs: dict[str, typing.Any]
+        *args: tuple[Any], **kwargs: dict[str, Any]
     ) -> logging.LogRecord:
         record = old_record_factory(*args, **kwargs)
         record.monotonic = round(time.monotonic() - epoch, 2)
@@ -33,7 +34,7 @@ def configure_logging():
 
 
 @contextlib.contextmanager
-def history(history_file: pathlib.Path):
+def history(history_file: pathlib.Path) -> Generator[None, None, None]:
     with contextlib.suppress(FileNotFoundError, PermissionError):
         readline.read_history_file(history_file)
     oldhlen = readline.get_current_history_length()
