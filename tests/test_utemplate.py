@@ -3,7 +3,16 @@ from typing import Any
 
 import pytest
 
-from utools.utemplate import Template, TemplateSyntaxError, VariableNotFoundError
+from utools.utemplate import (
+    Template,
+    TemplateError,
+    TemplateSyntaxError,
+    VariableNotFoundError,
+)
+
+
+def filter_error(_: str) -> str:
+    return str(1 / 0)
 
 
 def filter_upper(text: str) -> str:
@@ -18,6 +27,7 @@ TEST_CONTEXT = {
     "e": "python",
     "f": {"upper": filter_upper},
     "g": SimpleNamespace(upper=filter_upper, a=lambda: {"upper": filter_upper}),
+    "error": filter_error,
     "upper": filter_upper,
     "true": True,
     "false": False,
@@ -91,10 +101,36 @@ def test_block_errors():
         tpl("{% if true %}{{ e }}{% endfor %}")
     assert exc.match(r"Expected endif got endfor at ")
 
+    with pytest.raises(TemplateSyntaxError) as exc:
+        tpl("{% if %}{{ x }}{% endif %}")
+    assert exc.match("Invalid statement.*?if")
+
+    with pytest.raises(TemplateSyntaxError) as exc:
+        tpl("{% for %}{{ x }}{% endfor %}")
+    assert exc.match("Invalid statement.*?for")
+
+
+def test_render_error():
+    with pytest.raises(TemplateError) as exc:
+        tpl("{{ a | error }}")
+    assert exc.match("ZeroDivisionError: division by zero")
+
+    with pytest.raises(TemplateError) as exc:
+        tpl("{% for x in true %}{{ x }}{% endfor %}")
+    assert exc.match("TypeError: 'bool' object is not iterable")
+
+    with pytest.raises(TemplateError) as exc:
+        tpl("{% for x, y in list_ %}{{ x }}{% endfor %}")
+    assert exc.match("TypeError: cannot unpack non-iterable int object")
+
 
 def test_if_statement():
     assert tpl("{% if true %}{{ e }}{% endif %}") == "python"
     assert tpl("{% if false %}{{ e }}{% endif %}") == ""
+
+    with pytest.raises(VariableNotFoundError) as exc:
+        tpl("{% if z %}{{ z }}{% endif %}")
+    assert exc.match("Attribute/Item not found 'z'")
 
 
 def test_for_statement():
@@ -103,22 +139,29 @@ def test_for_statement():
     assert tpl("{% for z in filters %}{{ e | z }}{% endfor %}") == "PYTHONPYTHON"
 
 
-# test nested for
-# test non iterable
-# test variables not matching iterable values (packing)
-# test end not for
+def test_nesting():
+    assert (
+        tpl(
+            "{% for x in list_ %}{% for y in list_ %}{{ x }}{{ y }}{% endfor %}{% endfor %}"
+        )
+        == "111213212223313233"
+    )
 
-# test if/for
-# test for/if
+    assert (
+        tpl(
+            "{% for x in list_ %}{% for x in list_ %}{{ x }}{{ x }}{% endfor %}{% endfor %}"
+        )
+        == "112233112233112233"
+    )
 
-# test invalid statement
-# test invalid variable in if
-# test invalid if syntax
-# test invalid for syntax
+    assert (
+        tpl("{% if true %}{% for x in list_ %}{{ x }}{% endfor %}{% endif %}") == "123"
+    )
 
-# test attribute error (property exception)
-# test callable error
-# test filter error
+    assert tpl("{% if false %}{% for x in list_ %}{{ x }}{% endfor %}{% endif %}") == ""
 
-# line numbers in parsing errors
-# execute inline
+    assert (
+        tpl("{% for x in list_ %}{% if true %}{{ x }}{% endif %}{% endfor %}") == "123"
+    )
+
+    assert tpl("{% for x in list_ %}{% if false %}{{ x }}{% endif %}{% endfor %}") == ""

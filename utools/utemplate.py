@@ -3,8 +3,9 @@ from collections.abc import Callable, Generator, Iterable
 from contextlib import suppress
 from dataclasses import dataclass
 from re import compile, escape
+from traceback import format_exception
 from types import TracebackType
-from typing import Any, Literal, assert_never
+from typing import Any, Literal
 
 ATTRIBUTE_SEPARATOR = "."
 FILTER_SEPARATOR = "|"
@@ -46,23 +47,7 @@ UNDEFINED = object()
 
 
 class TemplateError(Exception):
-    @classmethod
-    def python_error(cls, source: str) -> "TemplateError":
-        from sys import exc_info
-        from traceback import extract_tb
-
-        lines = source.split("\n")
-        lno = extract_tb(exc_info()[2])[-1][1]
-        first = max(1, lno - 2)
-        last = min(lno + 3, len(lines))
-
-        src = "\n".join(
-            f"{'->' if n == lno else '  '}{n:4d} {lines[n-1]}"
-            for n in range(first, last)
-        )
-        msg = f"at line {lno}:\n{src}"
-
-        return cls(msg)
+    pass
 
 
 class TemplateSyntaxError(TemplateError):
@@ -227,16 +212,16 @@ class Template:
         self._context = Context(context or {})
         self._blocks: deque[tuple[str, tuple[str, ...]]] = deque()
         self._stack_frame = StackFrame()
-        self.source = self.transpile(template)
-        self.compile()
+        self.compile(template)
 
-    def compile(self):  # noqa: A003
+    def compile(self, template: str):  # noqa: A003
+        source = self.transpile(template)
         namespace = {}
         try:
-            exec(self.source, namespace)  # noqa: S102
+            exec(source, namespace)  # noqa: S102
             self.renderer = namespace["render"]
-        except SyntaxError as exc:
-            raise TemplateError.python_error(self.source) from exc
+        except Exception as exc:  # pragma: no cover  # noqa: BLE001
+            raise TemplateError("".join(format_exception(exc))) from exc
 
     def transpile(self, template: str) -> str:
         with CodeGenerator() as cg:
@@ -266,8 +251,10 @@ class Template:
                         cg.result(repr(token.text))
                     case "variable":
                         cg.result(self.transpile_variable_expression(token))
-                    case _:  # pragma: no branch
-                        assert_never(token.kind)
+                    case _:  # pragma: no cover
+                        # typing.assert_never is only available on python 3.11+
+                        err = f"Expected code to be unreachable, but got: {token.kind}"
+                        raise AssertionError(err)
         return str(cg)
 
     def transpile_block(self, token: Token) -> tuple[str, str]:
@@ -325,5 +312,5 @@ class Template:
             return self.renderer(self._context.copy().merge(context or {}))
         except TemplateError:
             raise
-        except Exception as exc:  # noqa: BLE001
-            raise TemplateError.python_error(self.source) from exc
+        except Exception as exc:  # pragma: no cover  # noqa: BLE001
+            raise TemplateError("".join(format_exception(exc))) from exc

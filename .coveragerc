@@ -5,8 +5,6 @@ branch = True
 skip_covered = True
 skip_empty = True
 
-exclude_lines =
-  pragma: no branch
-  pragma: no cover
-  continue
-  pass
+exclude_also =
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
