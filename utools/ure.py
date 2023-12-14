@@ -79,11 +79,14 @@ def match(states: list[State], text: str) -> tuple[bool, int]:
                 if index < len(text):
                     res, consumed = _check_state(state, text, index)
                     index += consumed
-            case "zeroOrMore":  # pragma: no branch
+            case "zeroOrMore":
                 while index < len(text):
                     res, consumed = _check_state(state, text, index)
                     if not res or consumed == 0:
                         break
                     index += consumed
+            case _:  # pragma: no cover
+                err = f"Unexpected quantifier {state.quantifier!r}"
+                raise AssertionError(err)
 
     return (True, index)
