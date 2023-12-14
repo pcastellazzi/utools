@@ -73,14 +73,14 @@ class Memory:
         self.mmio: dict[int, MemoryMappedDevice] = {}
         self.memory = array("H", zero_fill(self.SIZE))
 
-    def __getitem__(self, position: int) -> int:
-        if position in self.mmio:
-            with self.mmio[position]:
-                return self.memory[position]
-        return self.memory[position]
+    def __getitem__(self, address: int) -> int:
+        if address in self.mmio:
+            with self.mmio[address]:
+                return self.memory[address]
+        return self.memory[address]
 
-    def __setitem__(self, position: int, value: int):
-        self.memory[position] = value
+    def __setitem__(self, address: int, value: int):
+        self.memory[address] = value & 0xFFFF
 
     def add_device(self, address: int, device: MemoryMappedDevice):
         self.mmio[address] = device
@@ -92,8 +92,8 @@ class Memory:
         self.fromiter(start_address, memory)
 
     def fromiter(self, start_address: int, data: Iterable[int]):
-        memory = array("H", data)
-        self.memory[start_address : start_address + len(memory) - 1] = memory
+        for address, value in enumerate(data, start_address):
+            self.memory[address] = value
 
     def fromfile(self, fd: BytesIO):
         start_address = int.from_bytes(fd.read(2), "big")
@@ -135,7 +135,7 @@ class Registers:
         value = self.registers[register]
         if value == 0:
             self.cond = Flag.ZERO
-        elif value >> 15:  # left-most bit indicates negative
+        elif value >> 15:
             self.cond = Flag.NEGATIVE
         else:
             self.cond = Flag.POSITIVE
