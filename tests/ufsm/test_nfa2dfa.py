@@ -1,10 +1,10 @@
 from utools.ufsm import NFA, PHI
 
-from .symbols import AB, ABC, AC, BC, L_01, S_AB, S_AC, A, B, C, Z, fz
+from .symbols import L_01, S_AB, S_AC, A, B, C, L_ab, fz
 
 
 def test_starts_with_0():
-    n: NFA[L_01, S_AB] = NFA(
+    n = NFA[L_01, S_AB](
         start_state=A,
         final_states={B},
         transitions={
@@ -24,7 +24,7 @@ def test_starts_with_0():
 
 
 def test_ends_with_1():
-    n: NFA[L_01, S_AB] = NFA(
+    n = NFA[L_01, S_AB](
         start_state=A,
         final_states={B},
         transitions={
@@ -43,7 +43,7 @@ def test_ends_with_1():
 
 
 def test_ends_with_01():
-    n: NFA[L_01, S_AC] = NFA(
+    n = NFA[L_01, S_AC](
         start_state=A,
         final_states={C},
         transitions={
@@ -55,16 +55,16 @@ def test_ends_with_01():
     d = n.as_dfa()
 
     assert d.start_state == fz(A)
-    assert d.final_states == {fz(A,C)}
+    assert d.final_states == {fz(A, C)}
     assert d.transitions == {
-            fz(A): {0: {fz(A,B)}, 1: {fz(A)}},
-            fz(A,B): {0: {fz(A,B)}, 1: {fz(A,C)}},
-            fz(A,C): {0: {fz(A,B)}, 1: {fz(A)}},
-        }
+        fz(A): {0: {fz(A, B)}, 1: {fz(A)}},
+        fz(A, B): {0: {fz(A, B)}, 1: {fz(A, C)}},
+        fz(A, C): {0: {fz(A, B)}, 1: {fz(A)}},
+    }
 
 
 def test_ends_with_odd_number_of_b():
-    n: NFA[str, str] = NFA(
+    n = NFA[L_ab, S_AC](
         start_state=A,
         final_states={C},
         transitions={
@@ -76,18 +76,18 @@ def test_ends_with_odd_number_of_b():
     d = n.as_dfa()
 
     assert d.start_state == fz(A)
-    assert d.final_states == {fz(B,C), fz(C)}
+    assert d.final_states == {fz(B, C), fz(C)}
     assert d.transitions == {
-            fz(A): {"a": {fz(A,B)}, "b": {fz(C)}},
-            fz(A,B): {"a": {fz(A,B)}, "b": {fz(B, C)}},
-            fz(B,C): {"a": {fz(A)}, "b": {fz(A,B)}},
-            fz(C): {"a": {PHI}, "b": {fz(A,B)}},
-            PHI: {"a": {PHI}, "b": {PHI}},
-        }
+        fz(A): {"a": {fz(A, B)}, "b": {fz(C)}},
+        fz(A, B): {"a": {fz(A, B)}, "b": {fz(B, C)}},
+        fz(B, C): {"a": {fz(A)}, "b": {fz(A, B)}},
+        fz(C): {"a": {PHI}, "b": {fz(A, B)}},
+        PHI: {"a": {PHI}, "b": {PHI}},
+    }
 
 
 def test_second_to_last_is_always_1():
-    n: NFA[int, str] = NFA(
+    n = NFA[L_01, S_AC](
         start_state=A,
         final_states={C},
         transitions={
@@ -99,10 +99,10 @@ def test_second_to_last_is_always_1():
     d = n.as_dfa()
 
     assert d.start_state == fz(A)
-    assert d.final_states == {fz(A,C), fz(A,B,C)}
+    assert d.final_states == {fz(A, C), fz(A, B, C)}
     assert d.transitions == {
-            fz(A): {0: {fz(A)}, 1: {fz(A,B)}},
-            fz(A,B): {0: {fz(A,C)}, 1: {fz(A,B,C)}},
-            fz(A,C): {0: {fz(A)}, 1: {fz(A,B)}},
-            fz(A,B,C): {0: {fz(A,C)}, 1: {fz(A,B,C)}},
-        }
+        fz(A): {0: {fz(A)}, 1: {fz(A, B)}},
+        fz(A, B): {0: {fz(A, C)}, 1: {fz(A, B, C)}},
+        fz(A, C): {0: {fz(A)}, 1: {fz(A, B)}},
+        fz(A, B, C): {0: {fz(A, C)}, 1: {fz(A, B, C)}},
+    }

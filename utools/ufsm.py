@@ -1,36 +1,19 @@
-"""
-A finite state machine is represented by a tuple of 5 elements:
-
-* A non empty input alphabet
-* A non empty set of states
-* An initial state
-* A non empty set of final states
-* A transition function
-
-For a deterministic automata, the transition function is defined as:
-
-    fn(s: States, a: Alphabet) -> State
-
-For non-deterministic automata, the transition function is defined as:
-
-    fn(s: States, a: Alphabet) -> set[States]
-
-In this implementation this transition function is implemented as a:
-
-    dict[States, dict[Alphabet, set[States]]]
-
-PHI is used to represent the dead state.
-"""
-
 from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Generic, TypeVar
 
-Alphabet = TypeVar("Alphabet")
-States = TypeVar("States")
+A = TypeVar("A")
+S = TypeVar("S")
 
 
 class DeadState:
+    instance = None
+
+    def __new__(cls):
+        if not cls.instance:
+            cls.instance = super().__new__(cls)
+        return cls.instance
+
     def __iter__(self):
         yield self
 
@@ -42,53 +25,46 @@ PHI = DeadState()
 
 
 @dataclass
-class FiniteStateMachine(Generic[Alphabet, States]):
-    start_state: States
-    final_states: set[States]
-    transitions: dict[States, dict[Alphabet, set[States]]]
+class FiniteStateMachine(Generic[A, S]):
+    start_state: S
+    final_states: set[S]
+    transitions: dict[S, dict[A, set[S]]]
 
-    inputs: set[Alphabet] = field(init=False)
-    states: set[States] = field(init=False)
+    inputs: set[A] = field(init=False)
+    states: set[S] = field(init=False)
 
-    def __post_init__(self):
+    def calculate_properties(self):
         self.inputs = set()
         self.states = set()
+
         for state, inputs in self.transitions.items():
             self.inputs.update(inputs.keys())
             self.states.add(state)
 
-    def __call__(self, inputs: list[Alphabet]) -> tuple[set[States | DeadState], bool]:
-        threads = [(self.start_state, inputs)]
-        results: set[States | DeadState] = set()
+    __post_init__ = calculate_properties
 
-        while threads:
-            state, inputs = threads.pop()
-            try:
-                for index, symbol in enumerate(inputs):
-                    transitions = self.transitions[state][symbol].copy()
-                    state = transitions.pop()
-                    threads.extend((t, inputs[index + 1 :]) for t in transitions)
-            except (IndexError, KeyError):
-                state = PHI
-            results.add(state)
 
-        return (results, bool(results & self.final_states))
+class DFA(FiniteStateMachine[A, S]):
+    def __call__(self, inputs: list[A]) -> tuple[S | DeadState, bool]:
+        try:
+            state = next(iter(self.transitions[self.start_state][inputs[0]]))
+            for symbol in inputs[1:]:
+                state = next(iter(self.transitions[state][symbol]))
+        except (IndexError, KeyError):
+            state = PHI
 
-    def minimize(self) -> DFA[A, S]:
+        return (state, state in self.final_states)
+
+    def minimize(self) -> "DFA[A, S]":
         def cmp(a: list[set[S]], b: list[set[S]]) -> bool:
             if len(a) != len(b):
                 return False
-
-            for i in range(0, len(a)):
-                if a[i] != b[i]:
-                    return False
-
-            return True
+            return all(a[i] == b[i] for i in range(len(a)))
 
         def eq(s1: S, s2: S, table: list[set[S]]) -> bool:
-            for sym in dfa.inputs:
-                a = dfa.transitions[s1][sym]
-                b = dfa.transitions[s2][sym]
+            for sym in self.inputs:
+                a = self.transitions[s1][sym]
+                b = self.transitions[s2][sym]
                 if a == b:
                     continue
 
@@ -99,7 +75,7 @@ class FiniteStateMachine(Generic[Alphabet, States]):
 
             return True
 
-        previous = [dfa.states - dfa.final_states, dfa.final_states]
+        previous = [self.states - self.final_states, self.final_states]
         while True:
             current: list[set[S]] = []
             for subset in previous:
@@ -122,25 +98,43 @@ class FiniteStateMachine(Generic[Alphabet, States]):
                 break
             previous = current
 
-        return dfa
+        return self
 
-
-    def negate(self) -> "FiniteStateMachine[Alphabet, States]":
+    def negate(self) -> "DFA[A, S]":
         return self.__class__(
             start_state=self.start_state,
-            final_states=self.states - self.final_states,
+            final_states=set(self.transitions.keys()) - self.final_states,
             transitions=self.transitions,
         )
 
+
+class NFA(FiniteStateMachine[A, S]):
+    def __call__(self, inputs: list[A]) -> tuple[set[S | DeadState], bool]:
+        threads = [(self.start_state, inputs)]
+        results: set[S | DeadState] = set()
+
+        while threads:
+            state, inputs = threads.pop()
+            try:
+                for index, symbol in enumerate(inputs):
+                    transitions = self.transitions[state][symbol].copy()
+                    state = transitions.pop()
+                    threads.extend((t, inputs[index + 1 :]) for t in transitions)
+            except (IndexError, KeyError):
+                state = PHI
+            results.add(state)
+
+        return (results, bool(results & self.final_states))
+
     def as_dfa(self):
-        dfa = FiniteStateMachine[Alphabet, frozenset[States] | DeadState](
+        dfa = FiniteStateMachine[A, frozenset[S] | DeadState](
             start_state=frozenset({self.start_state}),
             final_states=set(),
             transitions={},
         )
 
-        pending: set[frozenset[States] | DeadState] = {frozenset({self.start_state})}
-        visited: set[frozenset[States] | DeadState] = set()
+        pending: set[frozenset[S] | DeadState] = {frozenset({self.start_state})}
+        visited: set[frozenset[S] | DeadState] = set()
 
         while pending:
             states = pending.pop()
@@ -154,7 +148,7 @@ class FiniteStateMachine(Generic[Alphabet, States]):
 
             dfa.transitions[states] = {}
             for symbol in self.inputs:
-                next_state: set[States] = set()
+                next_state: set[S] = set()
                 for state in states:
                     with suppress(KeyError):
                         next_state.update(self.transitions[state][symbol])
@@ -165,7 +159,7 @@ class FiniteStateMachine(Generic[Alphabet, States]):
 
             visited.add(states)
 
-        dfa.__post_init__()
+        dfa.calculate_properties()
         dfa.final_states.update(
             combined_state
             for combined_state in dfa.states
@@ -174,20 +168,3 @@ class FiniteStateMachine(Generic[Alphabet, States]):
         )
 
         return dfa
-
-
-FSM = FiniteStateMachine
-DFA = FiniteStateMachine
-NFA = FiniteStateMachine
-
-d: DFA[int, str] = DFA(
-    initial_state="A",
-    final_states={"E"},
-    transitions={
-        "A": {0: "B", 1: "C"},
-        "B": {0: "B", 1: "D"},
-        "C": {0: "B", 1: "C"},
-        "D": {0: "B", 1: "E"},
-        "E": {0: "B", 1: "C"},
-    },
-)

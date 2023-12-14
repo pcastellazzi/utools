@@ -13,6 +13,7 @@ BC = "BC"
 ABC = "ABC"
 
 L_01 = Literal[0, 1]
+L_ab = Literal["a", "b"]
 
 S_AB = Literal["A", "B"]
 S_AC = Literal["A", "B", "C"]

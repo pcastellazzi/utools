@@ -1,12 +1,10 @@
-from typing import Literal
-
 from utools.ufsm import DFA, PHI
 
-from .symbols import L_01, S_AC, S_AD, S_AE, A, B, C, D, E
+from .symbols import L_01, S_AC, S_AD, S_AE, A, B, C, D, E, L_ab
 
 
 def test_starts_with_0():
-    d: DFA[L_01, S_AC] = DFA(
+    d = DFA[L_01, S_AC](
         start_state=A,
         final_states={B},
         transitions={
@@ -15,12 +13,13 @@ def test_starts_with_0():
             C: {0: {C}, 1: {C}},
         },
     )
-    assert ({B}, True) == d([0, 0, 1])
-    assert ({C}, False) == d([1, 0, 1])
+
+    assert d([0, 0, 1]) == (B, True)
+    assert d([1, 0, 1]) == (C, False)
 
 
 def test_length_2():
-    d: DFA[L_01, S_AD] = DFA(
+    d = DFA[L_01, S_AD](
         start_state=A,
         final_states={C},
         transitions={
@@ -31,13 +30,13 @@ def test_length_2():
         },
     )
 
-    assert ({C}, True) == d([0, 0])
-    assert ({C}, True) == d([1, 0])
-    assert ({D}, False) == d([0, 0, 1])
+    assert d([0, 0]) == (C, True)
+    assert d([1, 0]) == (C, True)
+    assert d([0, 0, 1]) == (D, False)
 
 
 def test_does_not_contain_aabb():
-    d: DFA[Literal["a", "b"], S_AE] = DFA(
+    d = DFA[L_ab, S_AE](
         start_state=A,
         final_states={E},
         transitions={
@@ -50,13 +49,13 @@ def test_does_not_contain_aabb():
     )
     d = d.negate()
 
-    assert ({C}, True) == d(["a", "a", "a"])
-    assert ({A}, True) == d(["b", "b", "b"])
-    assert ({E}, False) == d(["a", "a", "b", "b"])
+    assert d(["a", "a", "a"]) == (C, True)
+    assert d(["b", "b", "b"]) == (A, True)
+    assert d(["a", "a", "b", "b"]) == (E, False)
 
 
 def test_01_or_1n0():
-    d: DFA[L_01, S_AE] = DFA(
+    d = DFA[L_01, S_AE](
         start_state=A,
         final_states={D, E},
         transitions={
@@ -68,12 +67,12 @@ def test_01_or_1n0():
         },
     )
 
-    assert ({D}, True) == d([1, 0])
-    assert ({D}, True) == d([1, 1, 0])
-    assert ({E}, True) == d([0, 1])
+    assert d([1, 0]) == (D, True)
+    assert d([1, 1, 0]) == (D, True)
+    assert d([0, 1]) == (E, True)
 
-    assert ({PHI}, False) == d([0, 0, 1])
-    assert ({PHI}, False) == d([0, 1, 0])
-    assert ({PHI}, False) == d([0, 1, 1])
-    assert ({PHI}, False) == d([1, 1, 0, 0])
-    assert ({PHI}, False) == d([1, 1, 0, 1])
+    assert d([0, 0, 1]) == (PHI, False)
+    assert d([0, 1, 0]) == (PHI, False)
+    assert d([0, 1, 1]) == (PHI, False)
+    assert d([1, 1, 0, 0]) == (PHI, False)
+    assert d([1, 1, 0, 1]) == (PHI, False)
