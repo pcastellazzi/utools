@@ -1,10 +1,10 @@
 from utools.ufsm import NFA, PHI
 
-from .symbols import L_01, S_AB, S_AC, A, B, C
+from .symbols import A, B, C
 
 
 def test_ends_with_0():
-    n = NFA[L_01, S_AB](
+    n = NFA(
         start_state=A,
         final_states={B},
         transitions={
@@ -18,7 +18,7 @@ def test_ends_with_0():
 
 
 def test_ends_with_1():
-    n = NFA[L_01, S_AB](
+    n = NFA(
         start_state=A,
         final_states={B},
         transitions={
@@ -32,7 +32,7 @@ def test_ends_with_1():
 
 
 def test_ends_with_11():
-    n = NFA[L_01, S_AC](
+    n = NFA(
         start_state=A,
         final_states={C},
         transitions={
@@ -49,7 +49,7 @@ def test_ends_with_11():
 
 
 def test_starts_with_0():
-    n = NFA[L_01, S_AB](
+    n = NFA(
         start_state=A,
         final_states={B},
         transitions={
@@ -63,7 +63,7 @@ def test_starts_with_0():
 
 
 def test_starts_with_01():
-    n = NFA[L_01, S_AC](
+    n = NFA(
         start_state=A,
         final_states={C},
         transitions={
@@ -79,7 +79,7 @@ def test_starts_with_01():
 
 
 def test_starts_with_10():
-    n = NFA[L_01, S_AC](
+    n = NFA(
         start_state=A,
         final_states={C},
         transitions={
@@ -97,7 +97,7 @@ def test_starts_with_10():
 
 
 def test_length_2():
-    n = NFA[L_01, S_AC](
+    n = NFA(
         start_state=A,
         final_states={C},
         transitions={
@@ -114,7 +114,7 @@ def test_length_2():
 
 
 def test_contains_0():
-    n = NFA[L_01, S_AB](
+    n = NFA(
         start_state=A,
         final_states={B},
         transitions={

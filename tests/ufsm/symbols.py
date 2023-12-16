@@ -5,6 +5,9 @@ B = "B"
 C = "C"
 D = "D"
 E = "E"
+F = "F"
+G = "G"
+H = "H"
 Z = "Z"
 
 AB = "AB"
@@ -19,6 +22,9 @@ S_AB = Literal["A", "B"]
 S_AC = Literal["A", "B", "C"]
 S_AD = Literal["A", "B", "C", "D"]
 S_AE = Literal["A", "B", "C", "D", "E"]
+S_AF = Literal["A", "B", "C", "D", "E", "F"]
+S_AG = Literal["A", "B", "C", "D", "E", "F", "G"]
+S_AH = Literal["A", "B", "C", "D", "E", "F", "G", "H"]
 
 
 def fz(*args: Any):

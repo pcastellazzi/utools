@@ -1,10 +1,10 @@
 from utools.ufsm import NFA, PHI
 
-from .symbols import L_01, S_AB, S_AC, A, B, C, L_ab, fz
+from .symbols import A, B, C, fz
 
 
 def test_starts_with_0():
-    n = NFA[L_01, S_AB](
+    n = NFA(
         start_state=A,
         final_states={B},
         transitions={
@@ -24,7 +24,7 @@ def test_starts_with_0():
 
 
 def test_ends_with_1():
-    n = NFA[L_01, S_AB](
+    n = NFA(
         start_state=A,
         final_states={B},
         transitions={
@@ -43,7 +43,7 @@ def test_ends_with_1():
 
 
 def test_ends_with_01():
-    n = NFA[L_01, S_AC](
+    n = NFA(
         start_state=A,
         final_states={C},
         transitions={
@@ -64,7 +64,7 @@ def test_ends_with_01():
 
 
 def test_ends_with_odd_number_of_b():
-    n = NFA[L_ab, S_AC](
+    n = NFA(
         start_state=A,
         final_states={C},
         transitions={
@@ -87,7 +87,7 @@ def test_ends_with_odd_number_of_b():
 
 
 def test_second_to_last_is_always_1():
-    n = NFA[L_01, S_AC](
+    n = NFA(
         start_state=A,
         final_states={C},
         transitions={

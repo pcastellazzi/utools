@@ -1,10 +1,10 @@
 from utools.ufsm import DFA, PHI
 
-from .symbols import L_01, S_AC, S_AD, S_AE, A, B, C, D, E, L_ab
+from .symbols import A, B, C, D, E
 
 
 def test_starts_with_0():
-    d = DFA[L_01, S_AC](
+    d = DFA(
         start_state=A,
         final_states={B},
         transitions={
@@ -19,7 +19,7 @@ def test_starts_with_0():
 
 
 def test_length_2():
-    d = DFA[L_01, S_AD](
+    d = DFA(
         start_state=A,
         final_states={C},
         transitions={
@@ -36,7 +36,7 @@ def test_length_2():
 
 
 def test_does_not_contain_aabb():
-    d = DFA[L_ab, S_AE](
+    d = DFA(
         start_state=A,
         final_states={E},
         transitions={
@@ -55,7 +55,7 @@ def test_does_not_contain_aabb():
 
 
 def test_01_or_1n0():
-    d = DFA[L_01, S_AE](
+    d = DFA(
         start_state=A,
         final_states={D, E},
         transitions={
