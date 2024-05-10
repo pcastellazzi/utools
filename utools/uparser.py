@@ -1,7 +1,8 @@
 import re
 import sys
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterable
 from dataclasses import dataclass
+from itertools import chain
 from typing import Any
 
 INFINITY = sys.maxsize
@@ -49,38 +50,28 @@ def literal(expected: str) -> Parser:
     return parser
 
 
-def pattern(expected: str) -> Parser:
+def pattern(expected: str, groups: int | str | Iterable[int | str] = 0) -> Parser:
     pattern = re.compile(expected)
+    if isinstance(groups, int | str):
+        groups = (groups,)
 
     def parser(index: int, actual: str) -> State:
         match = pattern.match(actual, index)
         if match:
-            return Success(match.end(), match.group())
+            return Success(match.end(), match.group(*groups))
         return Failure(index, expected)
 
     return parser
 
 
-def peek(a: Parser) -> Parser:
-    def parser(index: int, actual: str) -> State:
-        match a(index, actual):
-            case Success(_, value):
-                return Success(index, value)
-            case Failure() as failure:
-                return failure
+def optional(a: Parser, *, default: Any) -> Parser:
+    def default_value():
+        return default() if callable(default) else default
 
-    return parser
-
-
-def chain(a: Parser, fn: Callable[[Any], Parser]) -> Parser:
-    def parser(index: int, actual: str) -> State:
-        match a(index, actual):
-            case Failure() as failure:
-                return failure
-            case Success(index, value):
-                return fn(value)(index, actual)
-
-    return parser
+    return map(
+        repeat(a, 0, 1),
+        lambda items: items[0] if items else default_value(),
+    )
 
 
 def one(*, of: list[Parser]) -> Parser:
@@ -126,28 +117,22 @@ def repeat(a: Parser, minimum: int, maximum: int | None) -> Parser:
     return parser
 
 
-def many0(a: Parser) -> Parser:
-    return repeat(a, 0, INFINITY)
-
-
-def many1(a: Parser) -> Parser:
-    return repeat(a, 1, INFINITY)
-
-
-def separated(*, by: Parser, sequence: list[Parser]) -> Parser:
+def sequence(*, of: list[Parser], separator: None | Parser = None) -> Parser:
     def parser(index: int, actual: str) -> State:
         last_known_position = index
         values: list[Any] = []
 
-        # simulating "".join behavior
-        parsers = [by] * ((len(sequence) * 2) - 1)
-        parsers[0::2] = sequence
+        if separator:
+            parsers = [separator] * ((len(of) * 2) - 1)
+            parsers[0::2] = of
+        else:
+            parsers = of
 
-        for a in parsers:
-            match a(last_known_position, actual):
+        for p in parsers:
+            match p(last_known_position, actual):
                 case Success(index, value):
                     last_known_position = index
-                    if a != by:
+                    if p != separator:
                         values.append(value)
                 case Failure() as failure:
                     return failure
@@ -157,20 +142,13 @@ def separated(*, by: Parser, sequence: list[Parser]) -> Parser:
     return parser
 
 
-def sequence(*, of: list[Parser]) -> Parser:
+def bind(a: Parser, fn: Callable[[Any], Parser]) -> Parser:
     def parser(index: int, actual: str) -> State:
-        last_known_position = index
-        values: list[Any] = []
-
-        for a in of:
-            match a(last_known_position, actual):
-                case Success(index, value):
-                    last_known_position = index
-                    values.append(value)
-                case Failure() as failure:
-                    return failure
-
-        return Success(last_known_position, values)
+        match a(index, actual):
+            case Failure() as failure:
+                return failure
+            case Success(index, value):
+                return fn(value)(index, actual)
 
     return parser
 
@@ -193,6 +171,17 @@ def map(a: Parser, fn: Callable[[Any], Any]) -> Parser:  # noqa: A001
                 return failure
             case Success(index, value):
                 return Success(index, fn(value))
+
+    return parser
+
+
+def peek(a: Parser) -> Parser:
+    def parser(index: int, actual: str) -> State:
+        match a(index, actual):
+            case Success(_, value):
+                return Success(index, value)
+            case Failure() as failure:
+                return failure
 
     return parser
 
@@ -223,8 +212,27 @@ class ForwardDeclaration:
     def __call__(self, index: int, actual: str) -> State:
         return self.parser(index, actual)
 
-    def set(self, parser: Parser) -> None:  # noqa: A003
+    def set(self, parser: Parser) -> None:
         self.parser = parser
+
+
+def array0(*, of: Parser, separator: Parser) -> Parser:
+    return optional(array1(of=of, separator=separator), default=list)
+
+
+def array1(*, of: Parser, separator: Parser) -> Parser:
+    el0 = map(of, lambda e: [e])
+    el1 = map(sequence(of=[separator, of]), lambda s: s[1])
+    arr = sequence(of=[el0, many0(el1)])
+    return map(arr, lambda a: list(chain(*a)))
+
+
+def many0(a: Parser) -> Parser:
+    return repeat(a, 0, INFINITY)
+
+
+def many1(a: Parser) -> Parser:
+    return repeat(a, 1, INFINITY)
 
 
 def assert_failure(state: State, index: int, error: Any):

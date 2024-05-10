@@ -23,13 +23,13 @@ operator = p.one(
 )
 
 expression = p.ForwardDeclaration()
-expression_decl = p.separated(
-    by=whitespace,
-    sequence=[
+expression_decl = p.sequence(
+    of=[
         operator,
         p.one(of=[number, expression]),
         p.one(of=[number, expression]),
     ],
+    separator=whitespace,
 )
 expression.set(expression_decl)
 
