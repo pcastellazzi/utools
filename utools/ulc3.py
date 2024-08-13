@@ -9,16 +9,14 @@ from typing import Protocol, TextIO
 
 
 class MemoryMappedDevice(Protocol):
-    def __enter__(self) -> None:
-        ...
+    def __enter__(self) -> None: ...
 
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 def sign_extend(value: int, bits: int) -> int:
@@ -185,7 +183,7 @@ def lc3_trap(
     return False
 
 
-def lc3(registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO):  # noqa: PLR0915
+def lc3(registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO):  # noqa: C901 PLR0912 PLR0915
     registers.pc = PROGRAM_START
 
     while True:

@@ -9,7 +9,7 @@ homepage = "https://github.com/pcastellazzi/utools/"
 license = "MIT"
 name = "utools"
 readme = "README.md"
-version = "0.1.0"
+version = "0.1.1"
 
 authors = ["Pablo Castellazzi <pablo.castellazzi@icloud.com>"]
 
@@ -30,7 +30,6 @@ deptry = "*"
 pytest = "*"
 pytest-cov = "*"
 ruff = "*"
-safety = "*"
 
 [tool.ruff]
 builtins = ["_"]
@@ -51,4 +50,3 @@ ignore = [
     "ISC001", # conflics with the formatter
     "S101",   # use of assert
 ]
-

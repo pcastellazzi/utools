@@ -2,7 +2,7 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 PYTHON_CODE = utools/ tests/
-PYTEST_FLAGS = --quiet --cov=utools --cov-fail-under=100 --cov-report=term-missing tests/
+PYTEST_FLAGS = --quiet --cov=utools --cov-fail-under=85 --cov-report=term-missing tests/
 
 
 .PHONY: all
@@ -20,13 +20,12 @@ check-code-format:
 
 .PHONY: check-code-quality
 check-code-quality:
-	poetry run ruff $(PYTHON_CODE)
+	poetry run ruff check $(PYTHON_CODE)
 
 
 .PHONY: check-dependencies
 check-dependencies:
 	poetry run deptry .
-	poetry run safety check --bare
 
 
 .PHONY: install

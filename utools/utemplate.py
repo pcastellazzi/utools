@@ -123,7 +123,7 @@ class Context:
 
         return value
 
-    def filter(self, dotted_expression: str, initial_value: Any = UNDEFINED) -> Any:  # noqa: A003
+    def filter(self, dotted_expression: str, initial_value: Any = UNDEFINED) -> Any:
         fragments = dotted_expression.split(ATTRIBUTE_SEPARATOR)
 
         if initial_value is UNDEFINED:
@@ -214,13 +214,13 @@ class Template:
         self._stack_frame = StackFrame()
         self.compile(template)
 
-    def compile(self, template: str):  # noqa: A003
+    def compile(self, template: str):
         source = self.transpile(template)
         namespace = {}
         try:
             exec(source, namespace)  # noqa: S102
             self.renderer = namespace["render"]
-        except Exception as exc:  # pragma: no cover  # noqa: BLE001
+        except Exception as exc:  # pragma: no cover
             raise TemplateError("".join(format_exception(exc))) from exc
 
     def transpile(self, template: str) -> str:
@@ -312,5 +312,5 @@ class Template:
             return self.renderer(self._context.copy().merge(context or {}))
         except TemplateError:
             raise
-        except Exception as exc:  # pragma: no cover  # noqa: BLE001
+        except Exception as exc:  # pragma: no cover
             raise TemplateError("".join(format_exception(exc))) from exc
