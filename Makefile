@@ -2,7 +2,7 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 PYTHON_CODE = utools/ tests/
-PYTEST_FLAGS = --quiet --cov=utools --cov-fail-under=85 --cov-report=term-missing tests/
+PYTEST_FLAGS = --quiet --cov=utools --cov-fail-under=95 --cov-report=term-missing tests/
 
 
 .PHONY: all

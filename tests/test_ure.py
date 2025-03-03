@@ -1,6 +1,6 @@
 import pytest
 
-from utools.ure import compile, match
+from utools.ure import compile, match  # noqa: A004
 
 
 def re(expr: str, text: str) -> tuple[bool, int]:

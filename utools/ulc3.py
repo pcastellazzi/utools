@@ -1,5 +1,3 @@
-# cspell:words mmio
-
 from array import array
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag, auto
@@ -188,15 +186,7 @@ def lc3(registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO):  #
 
     while True:
         instruction = memory[registers.pc]
-        registers.pc += 1
-
         match OpCode(instruction >> 12):
-            case OpCode.BR:
-                cond = (instruction >> 9) & 0x7
-                if cond & registers.cond:
-                    pc_offset_9 = sign_extend(instruction & 0x1FF, 9)
-                    registers.pc += pc_offset_9
-
             case OpCode.ADD:
                 dr = (instruction >> 9) & 0x7
                 sr1 = (instruction >> 6) & 0x7
@@ -219,9 +209,17 @@ def lc3(registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO):  #
                     registers[dr] = registers[sr1] & registers[sr2]
                 registers.update_flags(dr)
 
+            case OpCode.BR:
+                cond = (instruction >> 9) & 0x7
+                if cond == registers.cond:
+                    pc_offset_9 = sign_extend(instruction & 0x1FF, 9)
+                    registers.pc += pc_offset_9
+                    continue  # skip PC increment
+
             case OpCode.JMP:
                 br = (instruction >> 6) & 0x7
                 registers.pc = registers[br]
+                continue  # skip PC increment
 
             case OpCode.JSR:
                 registers[7] = registers.pc
@@ -231,6 +229,7 @@ def lc3(registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO):  #
                 else:
                     br = (instruction >> 6) & 0x7
                     registers.pc = registers[br]
+                continue  # skip PC increment
 
             case OpCode.LD:
                 dr = (instruction >> 9) & 0x7
@@ -292,6 +291,7 @@ def lc3(registers: Registers, memory: Memory, stdin: TextIO, stdout: TextIO):  #
                 vector = instruction & 0xFF
                 if lc3_trap(vector, registers, memory, stdin, stdout):
                     break
+        registers.pc += 1
 
 
 if __name__ == "__main__":

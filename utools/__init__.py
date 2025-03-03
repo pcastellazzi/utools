@@ -1,5 +1,3 @@
-# cspell:words newhlen oldhlen
-
 import contextlib
 import logging
 import os
@@ -14,7 +12,7 @@ __all__ = ["DEBUG", "configure_logging", "history"]
 DEBUG = "DEBUG" in os.environ
 
 
-def configure_logging() -> None:
+def configure_logging() -> None:  # pragma: no cover
     old_record_factory = logging.getLogRecordFactory()
     epoch = time.monotonic()
 
@@ -34,17 +32,21 @@ def configure_logging() -> None:
 
 
 @contextlib.contextmanager
-def history(history_file: pathlib.Path) -> Generator[None, None, None]:
+def history(
+    history_file: pathlib.Path,
+) -> Generator[None, None, None]:  # pragma: no cover
     with contextlib.suppress(FileNotFoundError, PermissionError):
         readline.read_history_file(history_file)
-    oldhlen = readline.get_current_history_length()
+    old_history_length = readline.get_current_history_length()
 
     with contextlib.suppress(EOFError, KeyboardInterrupt):
         yield
 
     if hasattr(readline, "append_history_file"):
-        newhlen = readline.get_current_history_length()
+        new_history_length = readline.get_current_history_length()
         readline.set_history_length(1000)
-        readline.append_history_file(newhlen - oldhlen, history_file)
+        readline.append_history_file(
+            new_history_length - old_history_length, history_file
+        )
     else:
         readline.write_history_file(history_file)

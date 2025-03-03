@@ -1,4 +1,9 @@
 aabb
+cbreak
+delenv
+tcgetattr
+TCSADRAIN
+tcsetattr
 ufsm
 uparser
 utemplate
