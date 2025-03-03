@@ -1,33 +1,24 @@
-utools
-======
+# utools
 
 utools
 
+##  Tools
 
-Tools
-=====
+* <https://docs.astral.sh/uv/>
+* <https://pytest.org>
+* <https://pytest-cov.readthedocs.io/en/latest/index.html>
+* <https://ruff.rs>
+* <https://google.github.io/osv-scanner/>
 
-* https://poetry.eustace.io
-* https://pytest.org
-* https://pytest-cov.readthedocs.io/en/latest/index.html
-* https://ruff.rs
-* https://fpgmaas.github.io/deptry/
-* https://pyup.io/safety
+## Usage
 
-
-Usage
-=====
-
-This project uses [poetry](https://poetry.eustace.io) and a `Makefile` to glue
+This project uses [uv](https://docs.astral.sh/uv/) and a `Makefile` to glue
 some tasks together.
 
+##  Make targets
 
-Make targets
-------------
-
-* all (default: run the other task in the listed order)
+* all (default: runs the other task in the listed order)
 * clean (remove files not under version control)
-* test (run pytest and enforce code coverage)
-* check-code-format (ruff format)
-* check-code-quality (ruff check)
-* check-dependencies (deptry and safety)
+* install (create or update the projects venv)
+* check (runs ruff and osv-scanner)
+* test (runs pytest and enforce code coverage)

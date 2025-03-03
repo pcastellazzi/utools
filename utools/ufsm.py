@@ -64,7 +64,6 @@ class DFA(FiniteStateMachine[A, S]):
         )
 
         equivalences = [frozenset(e) for e in self._get_equivalence_table()]
-        print(equivalences)
         for state in equivalences:
             dfa.transitions[state] = {}
             for symbol in self.inputs:

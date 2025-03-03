@@ -1,52 +1,38 @@
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core>=1.0.0"]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
 
-[tool.poetry]
+[project]
+dynamic = ["classifiers", "dependencies"]
+
 description = "utools"
-documentation = "https://github.com/pcastellazzi/utools/"
-homepage = "https://github.com/pcastellazzi/utools/"
 license = "MIT"
 name = "utools"
 readme = "README.md"
-version = "0.1.1"
+requires-python = ">=3.11"
+version = "0.1.0"
 
-authors = ["Pablo Castellazzi <pablo.castellazzi@icloud.com>"]
-
-classifiers = [
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Topic :: Utilities",
+authors = [
+    {name = "Pablo Castellazzi", email = "pablo.castellazzi@icloud.com"},
 ]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-
-[tool.poetry.group.dev.dependencies]
-deptry = "*"
-pytest = "*"
-pytest-cov = "*"
-ruff = "*"
+[dependency-groups]
+dev = ["pytest", "pytest-cov", "ruff"]
 
 [tool.ruff]
 builtins = ["_"]
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 fixable = ["ALL"]
 select = ["ALL"]
 
 ignore = [
-    "ANN", # annotations (flake8-annotations)
-    "COM", # trailing commas (flake8-commas)
-    "D",   # documentation (pydocstyle)
-    "INP", # implicity namespaces (flake8-no-pep420)
-    "T20", # use of print (flake8-print)
+    "ANN",  # don't force type annotations
+    "D",    # don't force documentation
+    "S101", # conflict with pytest
 
-    "E501",   # line too long
-    "ISC001", # conflics with the formatter
-    "S101",   # use of assert
+    # conflict with ruff format
+    "COM",  # trailing commas
+    "E501", # line too long
 ]

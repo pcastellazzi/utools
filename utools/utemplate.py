@@ -2,7 +2,7 @@ from collections import deque
 from collections.abc import Callable, Generator, Iterable
 from contextlib import suppress
 from dataclasses import dataclass
-from re import compile, escape
+from re import compile, escape  # noqa: A004
 from traceback import format_exception
 from types import TracebackType
 from typing import Any, Literal

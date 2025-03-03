@@ -36,7 +36,7 @@ class VM:
         return self
 
 
-@pytest.fixture()
+@pytest.fixture
 def vm():
     return VM()
 

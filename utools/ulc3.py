@@ -1,5 +1,3 @@
-# cspell:words mmio
-
 from array import array
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag, auto
