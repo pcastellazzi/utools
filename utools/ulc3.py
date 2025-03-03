@@ -148,8 +148,8 @@ def lc3_trap(
             registers[0] = ord(stdin.read(1)) & 0xFF
 
         case TrapVector.PUT_CHARACTER:
-            sys.stdout.write(chr(registers[0] & 0xFF))
-            sys.stdout.flush()
+            stdout.write(chr(registers[0] & 0xFF))
+            stdout.flush()
 
         case TrapVector.PUT_STRING:
             start = registers[0]
@@ -328,7 +328,7 @@ if __name__ == "__main__":
 
         def __enter__(self):
             # only works when the terminal is in raw or cbreak mode
-            waiting, _, _ = select.select([sys.stdin], [], [], 0)
+            waiting, _, _ = select.select([self.stdin], [], [], 0)
             if len(waiting) > 0:
                 self.memory[self.SIGNAL] = 1 << 15
                 self.memory[self.DATA] = ord(self.stdin.read(1))
