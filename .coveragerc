@@ -7,8 +7,7 @@ skip_covered = True
 skip_empty = True
 
 exclude_also =
-    class .*\bProtocol\):
-    @(abc\.)?abstractmethod
     if __name__ == .__main__.:
     if TYPE_CHECKING:
-    pass
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
