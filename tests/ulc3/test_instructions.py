@@ -143,7 +143,7 @@ def test_br(vm: VM, flag):
         return vm.registers.pc
 
     vm.registers.cond = flag
-    assert run(flag) == 0x3002
+    assert run(flag) == 0x3002  # noqa: PLR2004
 
     vm.registers.cond = ~flag
     assert run(flag) == 0x3001  # noqa: PLR2004
@@ -204,7 +204,7 @@ def test_ldr(vm: VM):
 
 def test_lea(vm: VM):
     def run(a: int) -> int:
-        ins = op(OpCode.LEA) / dr(1) / imm9(5)
+        ins = op(OpCode.LEA) / dr(1) / imm9(a)
         vm.run([ins, INS_HALT])
         return vm.registers[1]
 

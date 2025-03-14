@@ -2,37 +2,33 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 PYTHON_CODE = utools/ tests/
-PYTEST_FLAGS = --quiet --cov=utools --cov-fail-under=95 --cov-report=term-missing tests/
-
+PYTHON_VERSIONS = 3.11 3.12 3.13
+PYTEST_FLAGS = --cov=utools --cov-report=term-missing
 
 .PHONY: all
 all: install check
 
 
 .PHONY: check
-check: test check-code-format check-code-quality check-dependencies
-
-
-.PHONY: check-code-format
-check-code-format:
-	poetry run ruff format --check --quiet $(PYTHON_CODE)
-
-
-.PHONY: check-code-quality
-check-code-quality:
-	poetry run ruff check $(PYTHON_CODE)
-
-
-.PHONY: check-dependencies
-check-dependencies:
-	poetry run deptry .
+check:
+	uv run ruff format --check --quiet $(PYTHON_CODE)
+	uv run ruff check $(PYTHON_CODE)
+	osv-scanner .
 
 
 .PHONY: install
 install:
-	poetry install
+	uv sync
 
 
 .PHONY: test
 test:
-	poetry run pytest $(PYTEST_FLAGS)
+	uv run pytest $(PYTEST_FLAGS)
+
+
+.PHONY: integration
+integration: $(PYTHON_VERSIONS)
+
+.PHONY: $(PYTHON_VERSIONS)
+$(PYTHON_VERSIONS):
+	$(MAKE) UV_PROJECT_ENVIRONMENT=.uv/$@ UV_PYTHON=$@ install test

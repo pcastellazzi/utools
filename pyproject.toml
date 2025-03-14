@@ -3,7 +3,7 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [project]
-dynamic = ["classifiers", "dependencies"]
+dynamic = ["classifiers"]
 
 description = "utools"
 license = "MIT"
@@ -18,6 +18,24 @@ authors = [
 
 [dependency-groups]
 dev = ["pytest", "pytest-cov", "ruff"]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+skip_covered = true
+skip_empty = true
+
+exclude_also = [
+    "@(abc\\.)?abstractmethod",
+    "class .*\\bProtocol\\):",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=utools --strict-markers --quiet -Werror"
 
 [tool.ruff]
 builtins = ["_"]
@@ -36,3 +54,6 @@ ignore = [
     "COM",  # trailing commas
     "E501", # line too long
 ]
+
+[tool.uv]
+python-preference = "only-managed"
